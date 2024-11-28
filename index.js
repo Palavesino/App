@@ -11,6 +11,7 @@ const app = express();
 app.use(cors());
 
 let chatbot
+let baileysConnection
 const flowMenu = addKeyword(EVENTS.WELCOME)
   .addAnswer('ᴡ ᴇ ʟ ᴄ ᴏ ᴍ ᴇ  𝓣𝓸  𝓒𝓱𝓪𝓽𝓑𝓸𝓽 The New WORLD');
 
@@ -24,6 +25,7 @@ const main = async () => {
     provider: adapterProvider,
     database: adapterDB,
   });
+  baileysConnection = chatbot.provider;  
 };
 
 app.get("/", (req, res) => {
@@ -69,16 +71,28 @@ app.get("/test", (req, res) => {
   res.send(htmlResponse);
 });
 
-app.get('/start-bot', async (req, res) => {
-  try {
-    console.log("start bot");
-    await main();
+// Endpoint para detener el bot
+app.get("/endBot", async (req, res) => {
+  if (chatbot && baileysConnection) {
+    try {
+      console.log("Deteniendo el bot...");
 
-    res.status(200).json({
-      message: 'Bot iniciado correctamente.'
-    });
-  } catch (error) {
-    res.status(500).json({ error: 'Ocurrió un error al iniciar el bot.' });
+      // Si el proveedor es Baileys, detendremos la conexión de Baileys
+      if (baileysConnection && baileysConnection.end) {
+        baileysConnection.end();  // Este método debería cerrar la conexión de Baileys
+      }
+
+      // Limpiar chatbot
+      chatbot = null;
+      baileysConnection = null;
+
+      res.status(200).json({ message: 'Bot detenido correctamente.' });
+    } catch (error) {
+      console.error("Error al detener el bot:", error);
+      res.status(500).json({ error: 'Ocurrió un error al detener el bot.' });
+    }
+  } else {
+    res.status(400).json({ error: 'El bot no está iniciado.' });
   }
 });
 

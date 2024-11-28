@@ -9,7 +9,7 @@ const MockAdapter = require('@bot-whatsapp/database/mock');
 const port = process.env.PORT || 3000;
 const app = express();
 app.use(cors());
-
+let chatbot
 const flowMenu = addKeyword(EVENTS.WELCOME)
   .addAnswer('ᴡ ᴇ ʟ ᴄ ᴏ ᴍ ᴇ  𝓣𝓸  𝓒𝓱𝓪𝓽𝓑𝓸𝓽 The New WORLD');
 
@@ -18,7 +18,7 @@ const main = async () => {
   const adapterFlow = createFlow([flowMenu]);
   const adapterProvider = createProvider(BaileysProvider);
 
-  createBot({
+  chatbot = createBot({
     flow: adapterFlow,
     provider: adapterProvider,
     database: adapterDB,
@@ -36,6 +36,22 @@ app.get("/", (req, res) => {
       </body>
     </html>
   `;
+  res.send(htmlResponse);
+});
+
+app.get("/endBot", (req, res) => {
+  const htmlResponse = `
+    <html>
+      <head>
+        <title>CHATBOT END</title>
+      </head>
+      <body>
+        <h1>CHATBOT END</h1>
+      </body>
+    </html>
+  `;
+  chatbot = null;
+
   res.send(htmlResponse);
 });
 app.get("/test", (req, res) => {

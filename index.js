@@ -8,7 +8,10 @@ const MockAdapter = require('@bot-whatsapp/database/mock');
 
 const port = process.env.PORT || 3000;
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: '*',  // Aquí pones el dominio de tu frontend
+  credentials: true,  // Permite que se envíen las cookies junto con las peticiones
+}));
 
 app.use((req, res, next) => {
   res.cookie('__vercel_live_token', 'your-token-value', {
@@ -93,13 +96,13 @@ app.get('/start-bot', async (req, res) => {
 
 // Función para convertir un archivo en base64
 const convertToBase64 = (filePath) => {
-    try {
-        const file = fs.readFileSync(filePath);  // Lee el archivo de forma síncrona
-        return file.toString('base64');  // Convierte a Base64
-    } catch (error) {
-        console.error("Error al leer el archivo:", error);
-        throw error;
-    }
+  try {
+    const file = fs.readFileSync(filePath);  // Lee el archivo de forma síncrona
+    return file.toString('base64');  // Convierte a Base64
+  } catch (error) {
+    console.error("Error al leer el archivo:", error);
+    throw error;
+  }
 };
 
 
@@ -127,8 +130,8 @@ app.get('/get-qr', async (req, res) => {
 
     // Devuelve la imagen en base64 y un mensaje
     res.status(200).json({
-        message: 'qr generado correctamente.',
-        imageBase64: imageBase64,
+      message: 'qr generado correctamente.',
+      imageBase64: imageBase64,
     });
   } catch (error) {
     res.status(500).json({ error: 'Ocurrió un error al iniciar el bot.' });

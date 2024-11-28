@@ -52,31 +52,31 @@ app.get("/test", (req, res) => {
     res.send(htmlResponse);
 });
 
-app.get('/start-bot', async (req, res) => {
-    try {
-        console.log("start bot");
-        await main();
+// app.get('/start-bot', async (req, res) => {
+//     try {
+//         console.log("start bot");
+//         await main();
 
-        res.status(200).json({
-            message: 'Bot iniciado correctamente.'
-        });
-    } catch (error) {
-        res.status(500).json({ error: 'Ocurrió un error al iniciar el bot.' });
-    }
-});
+//         res.status(200).json({
+//             message: 'Bot iniciado correctamente.'
+//         });
+//     } catch (error) {
+//         res.status(500).json({ error: 'Ocurrió un error al iniciar el bot.' });
+//     }
+// });
 
-app.get('/get-qr', async (req, res) => {
-    try {
-        console.log("Generando qr");
-        const imagePath = path.join(process.cwd(), 'bot.qr.png');
-        const image = fs.createReadStream(imagePath);
-        res.setHeader('Content-Type', 'image/png');
-        res.setHeader('Content-Disposition', 'attachment; filename="bot.qr.png"');
-        image.pipe(res);
-    } catch (error) {
-        res.status(500).json({ error: 'Ocurrió un error al iniciar el bot.' });
-    }
-});
+// app.get('/get-qr', async (req, res) => {
+//     try {
+//         console.log("Generando qr");
+//         const imagePath = path.join(process.cwd(), 'bot.qr.png');
+//         const image = fs.createReadStream(imagePath);
+//         res.setHeader('Content-Type', 'image/png');
+//         res.setHeader('Content-Disposition', 'attachment; filename="bot.qr.png"');
+//         image.pipe(res);
+//     } catch (error) {
+//         res.status(500).json({ error: 'Ocurrió un error al iniciar el bot.' });
+//     }
+// });
 
 // Arrancar el servidor de Express
 app.listen(port, () => {

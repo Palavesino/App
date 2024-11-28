@@ -10,8 +10,7 @@ const port = process.env.PORT || 3000;
 const app = express();
 app.use(cors());
 
-let chatbot
-let baileysConnection
+let bot
 const flowMenu = addKeyword(EVENTS.WELCOME)
   .addAnswer('ᴡ ᴇ ʟ ᴄ ᴏ ᴍ ᴇ  𝓣𝓸  𝓒𝓱𝓪𝓽𝓑𝓸𝓽 The New WORLD');
 
@@ -20,12 +19,11 @@ const main = async () => {
   const adapterFlow = createFlow([flowMenu]);
   const adapterProvider = createProvider(BaileysProvider);
 
-  chatbot = createBot({
+  return createBot({
     flow: adapterFlow,
     provider: adapterProvider,
     database: adapterDB,
   });
-  baileysConnection = chatbot.provider;  
 };
 
 app.get("/", (req, res) => {
@@ -53,7 +51,7 @@ app.get("/endBot", (req, res) => {
       </body>
     </html>
   `;
-  chatbot = null;
+  bot = null;
 
   res.send(htmlResponse);
 });
@@ -71,40 +69,28 @@ app.get("/test", (req, res) => {
   res.send(htmlResponse);
 });
 
-// Endpoint para detener el bot
-app.get("/endBot", async (req, res) => {
-  if (chatbot && baileysConnection) {
-    try {
-      console.log("Deteniendo el bot...");
+app.get('/start-bot', async (req, res) => {
+  try {
+    console.log("start bot");
+    bot = await main();
 
-      // Si el proveedor es Baileys, detendremos la conexión de Baileys
-      if (baileysConnection && baileysConnection.end) {
-        baileysConnection.end();  // Este método debería cerrar la conexión de Baileys
-      }
-
-      // Limpiar chatbot
-      chatbot = null;
-      baileysConnection = null;
-
-      res.status(200).json({ message: 'Bot detenido correctamente.' });
-    } catch (error) {
-      console.error("Error al detener el bot:", error);
-      res.status(500).json({ error: 'Ocurrió un error al detener el bot.' });
-    }
-  } else {
-    res.status(400).json({ error: 'El bot no está iniciado.' });
+    res.status(200).json({
+      message: 'Bot iniciado correctamente.'
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Ocurrió un error al iniciar el bot.' });
   }
 });
 
 // Función para convertir un archivo en base64
 const convertToBase64 = (filePath) => {
-    try {
-        const file = fs.readFileSync(filePath);  // Lee el archivo de forma síncrona
-        return file.toString('base64');  // Convierte a Base64
-    } catch (error) {
-        console.error("Error al leer el archivo:", error);
-        throw error;
-    }
+  try {
+    const file = fs.readFileSync(filePath);  // Lee el archivo de forma síncrona
+    return file.toString('base64');  // Convierte a Base64
+  } catch (error) {
+    console.error("Error al leer el archivo:", error);
+    throw error;
+  }
 };
 
 
@@ -132,8 +118,8 @@ app.get('/get-qr', async (req, res) => {
 
     // Devuelve la imagen en base64 y un mensaje
     res.status(200).json({
-        message: 'qr generado correctamente.',
-        imageBase64: imageBase64,
+      message: 'qr generado correctamente.',
+      imageBase64: imageBase64,
     });
   } catch (error) {
     res.status(500).json({ error: 'Ocurrió un error al iniciar el bot.' });

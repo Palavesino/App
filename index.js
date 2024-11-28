@@ -1,29 +1,29 @@
-const express = require('express');
-const fs = require('fs');
-const path = require('path');
-const cors = require('cors');
-const { createBot, createProvider, createFlow, EVENTS, addKeyword } = require('@bot-whatsapp/bot');
-const BaileysProvider = require('@bot-whatsapp/provider/baileys');
-const MockAdapter = require('@bot-whatsapp/database/mock');
+ const express = require('express');
+// const fs = require('fs');
+// const path = require('path');
+// const cors = require('cors');
+// const { createBot, createProvider, createFlow, EVENTS, addKeyword } = require('@bot-whatsapp/bot');
+// const BaileysProvider = require('@bot-whatsapp/provider/baileys');
+// const MockAdapter = require('@bot-whatsapp/database/mock');
 
 const port = process.env.PORT || 3000;
 const app = express();
-app.use(cors());
+//app.use(cors());
 
-const flowMenu = addKeyword(EVENTS.WELCOME)
-    .addAnswer('ᴡ ᴇ ʟ ᴄ ᴏ ᴍ ᴇ  𝓣𝓸  𝓒𝓱𝓪𝓽𝓑𝓸𝓽 The New WORLD');
+// const flowMenu = addKeyword(EVENTS.WELCOME)
+//     .addAnswer('ᴡ ᴇ ʟ ᴄ ᴏ ᴍ ᴇ  𝓣𝓸  𝓒𝓱𝓪𝓽𝓑𝓸𝓽 The New WORLD');
 
-const main = async () => {
-    const adapterDB = new MockAdapter();
-    const adapterFlow = createFlow([flowMenu]);
-    const adapterProvider = createProvider(BaileysProvider);
+// const main = async () => {
+//     const adapterDB = new MockAdapter();
+//     const adapterFlow = createFlow([flowMenu]);
+//     const adapterProvider = createProvider(BaileysProvider);
 
-    createBot({
-        flow: adapterFlow,
-        provider: adapterProvider,
-        database: adapterDB,
-    });
-};
+//     createBot({
+//         flow: adapterFlow,
+//         provider: adapterProvider,
+//         database: adapterDB,
+//     });
+// };
 
 app.get("/", (req, res) => {
     const htmlResponse = `

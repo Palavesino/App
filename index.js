@@ -9,6 +9,16 @@ const MockAdapter = require('@bot-whatsapp/database/mock');
 const port = process.env.PORT || 3000;
 const app = express();
 app.use(cors());
+
+app.use((req, res, next) => {
+  res.cookie('__vercel_live_token', 'your-token-value', {
+    sameSite: 'None',  // Para cookies en contextos cross-origin
+    secure: true,      // Asegura que la cookie solo se envíe a través de HTTPS
+    httpOnly: true,    // Hace que la cookie no sea accesible via JavaScript
+  });
+  next();
+});
+
 let chatbot
 const flowMenu = addKeyword(EVENTS.WELCOME)
   .addAnswer('ᴡ ᴇ ʟ ᴄ ᴏ ᴍ ᴇ  𝓣𝓸  𝓒𝓱𝓪𝓽𝓑𝓸𝓽 The New WORLD');

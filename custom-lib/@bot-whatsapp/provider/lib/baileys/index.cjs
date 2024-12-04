@@ -403,23 +403,35 @@ class BaileysProvider extends ProviderClass {
                             if (err) return
                         });
 
-                       // this.initBailey();
+                        // this.initBailey();
                     }
                 }
 
                 /** Conexion abierta correctamente */
                 if (connection === 'open') {
-                    // Notificar 
+                    // Imprimir en consola cuando la conexión se abre
+                    console.log('Conexión WebSocket abierta en el puerto: ' + wss.address().port);
+
+                    // Notificar a los clientes conectados
                     wss.clients.forEach(client => {
                         if (client.readyState === WebSocket.OPEN) {
+                            console.log('Enviando mensaje a cliente:', client);
                             client.send(JSON.stringify({ type: 'QR_SCANNED', payload: 'QR code scanned successfully' }));
                         }
                     });
 
+                    // Imprimir información sobre el usuario
                     const parseNumber = `${sock?.user?.id}`.split(':').shift();
+                    console.log('Número de usuario procesado:', parseNumber);
+
                     const host = { ...sock?.user, phone: parseNumber };
+                    console.log('Host creado:', host);
+
+                    // Emitir eventos
                     this.emit('ready', true);
                     this.emit('host', host);
+
+                    // Llamar a la función para manejar eventos adicionales
                     this.initBusEvents(sock);
                 }
 

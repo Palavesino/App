@@ -138,15 +138,22 @@ app.get('/get-qr/:qrName', async (req, res) => {
     console.log('Nombre del QR recibido:', qrName);
 
     // Ruta al archivo PNG generado
-    const imagePath = path.join(process.cwd(), qrName);
+    const imagePath = path.join(__dirname, qrName);
+    // Verifica si el archivo existe antes de procesarlo
+    fs.access(imagePath, fs.constants.F_OK, (err) => {
+      if (err) {
+        console.error('Archivo no encontrado:', imagePath);
+        return res.status(404).json({ error: 'Archivo no encontrado.' });
+      }
 
-    // Convierte la imagen a base64
-    const imageBase64 = convertToBase64(imagePath);
+      // Si el archivo existe, conviértelo a base64
+      const imageBase64 = convertToBase64(imagePath);
 
-    // Devuelve la imagen en base64 y un mensaje
-    res.status(200).json({
-      message: 'QR generado correctamente.',
-      imageBase64: imageBase64,
+      // Responde con el QR en base64
+      res.status(200).json({
+        message: 'QR generado correctamente.',
+        imageBase64: imageBase64,
+      });
     });
   } catch (error) {
     console.error('Error al generar el QR:', error);

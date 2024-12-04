@@ -126,16 +126,16 @@ const convertToBase64 = (filePath) => {
 //   }
 // });
 
-app.post('/get-qr', async (req, res) => {
+app.get('/get-qr/:qrName', async (req, res) => {
   try {
-    console.log(req.body);
-
-    // Recupera el nombre del QR desde el body
-    const qrName = req.body.name;
+    // Recupera el nombre del QR desde los parámetros de la URL
+    const qrName = req.params.qrName;
 
     if (!qrName) {
       return res.status(400).json({ error: 'El nombre del QR es requerido.' });
     }
+
+    console.log('Nombre del QR recibido:', qrName);
 
     // Ruta al archivo PNG generado
     const imagePath = path.join(process.cwd(), qrName);
@@ -153,6 +153,7 @@ app.post('/get-qr', async (req, res) => {
     res.status(500).json({ error: 'Ocurrió un error al generar el QR.' });
   }
 });
+
 
 // Arrancar el servidor de Express
 app.listen(port, () => {

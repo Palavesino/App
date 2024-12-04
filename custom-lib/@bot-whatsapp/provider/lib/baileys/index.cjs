@@ -80,7 +80,8 @@ const baileyCleanNumber$1 = (number, full = false) => {
  * @param {*} base64
  */
 const baileyGenerateImage$1 = async (base64, name = 'qr.png') => {
-    const PARSED_PATH = path.resolve(process.env.QR_WRITE_PATH);
+    const QrPath = process.env.QR_WRITE_PATH || './'
+    const PARSED_PATH = path.resolve(QrPath);
     const PATH_QR = `${PARSED_PATH}/${name}`;
     let qr_svg = qr.image(base64, { type: 'png', margin: 4 });
 

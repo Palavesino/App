@@ -9,22 +9,32 @@ const MockAdapter = require('@bot-whatsapp/database/mock');
 const port = process.env.PORT || 3000;
 const app = express();
 app.use(cors());
-
-let bot
+app.use(express.json());
+let contador = 1
+//-------------------------------------------------
+let botQr = ''
 const flowMenu = addKeyword(EVENTS.WELCOME)
   .addAnswer('ᴡ ᴇ ʟ ᴄ ᴏ ᴍ ᴇ  𝓣𝓸  𝓒𝓱𝓪𝓽𝓑𝓸𝓽 The New WORLD');
 
 const main = async () => {
+  const botName = `bot-${contador}`;
+  botQr = `bot-${contador}.qr.png`;
+  contador++;
+
   const adapterDB = new MockAdapter();
   const adapterFlow = createFlow([flowMenu]);
-  const adapterProvider = createProvider(BaileysProvider);
+  const adapterProvider = createProvider(BaileysProvider, {
+    name: botName,
+  });
 
   return createBot({
     flow: adapterFlow,
     provider: adapterProvider,
     database: adapterDB,
   });
+
 };
+
 
 app.get("/", (req, res) => {
   const htmlResponse = `
@@ -71,11 +81,20 @@ app.get("/test", (req, res) => {
 
 app.get('/start-bot', async (req, res) => {
   try {
+    // // Ruta al archivo .png en el directorio raíz
+    // const filePath = path.join(__dirname, 'bot.qr.png');
+    // // Verificar si el archivo existe
+    // if (fs.existsSync(filePath)) {
+    //   // Eliminar el archivo si existe
+    //   fs.unlinkSync(filePath);
+    //   console.log('Archivo image.png eliminado.');
+    // }
     console.log("start bot");
-    bot = await main();
+    await main();
 
     res.status(200).json({
-      message: 'Bot iniciado correctamente.'
+      message: 'Bot iniciado correctamente.',
+      botQrName: botQr
     });
   } catch (error) {
     res.status(500).json({ error: 'Ocurrió un error al iniciar el bot.' });
@@ -107,24 +126,34 @@ const convertToBase64 = (filePath) => {
 //   }
 // });
 
-app.get('/get-qr', async (req, res) => {
+app.post('/get-qr', async (req, res) => {
   try {
-    console.log("Generando qr");
+    console.log(req.body);
+
+    // Recupera el nombre del QR desde el body
+    const qrName = req.body.name;
+
+    if (!qrName) {
+      return res.status(400).json({ error: 'El nombre del QR es requerido.' });
+    }
+
     // Ruta al archivo PNG generado
-    const imagePath = path.join(process.cwd(), 'bot.qr.png');
+    const imagePath = path.join(process.cwd(), qrName);
 
     // Convierte la imagen a base64
     const imageBase64 = convertToBase64(imagePath);
 
     // Devuelve la imagen en base64 y un mensaje
     res.status(200).json({
-      message: 'qr generado correctamente.',
+      message: 'QR generado correctamente.',
       imageBase64: imageBase64,
     });
   } catch (error) {
-    res.status(500).json({ error: 'Ocurrió un error al iniciar el bot.' });
+    console.error('Error al generar el QR:', error);
+    res.status(500).json({ error: 'Ocurrió un error al generar el QR.' });
   }
 });
+
 // Arrancar el servidor de Express
 app.listen(port, () => {
   console.log(`Servidor Express corriendo en http://localhost:${port}`);

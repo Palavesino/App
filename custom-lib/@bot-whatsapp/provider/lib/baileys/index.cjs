@@ -403,7 +403,7 @@ class BaileysProvider extends ProviderClass {
                             if (err) return
                         });
 
-                        this.initBailey();
+                       // this.initBailey();
                     }
                 }
 

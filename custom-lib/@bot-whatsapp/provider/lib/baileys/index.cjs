@@ -27,13 +27,11 @@ const { readFile } = require$$1;
 require('dotenv').config()
 
 const WebSocket = require('ws');
-const wss = new WebSocket.Server({
-    port: process.env.WS_PORT || 8080,
-    verifyClient: (info, done) => {
-      // Permite todas las conexiones sin restricción de origen (comodín)
-      done(true);
-    }
-  });
+const port = process.env.WS_PORT || process.env.PORT || 8080;
+
+const wss = new WebSocket.Server({ port }, () => {
+    console.log(`Servidor WebSocket escuchando en el puerto ${port}`);
+});
 
 /**
  * Agregar un borde alrededor para mejorar la lectura de QR

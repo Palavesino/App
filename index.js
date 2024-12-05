@@ -24,7 +24,7 @@ const main = async () => {
   const adapterDB = new MockAdapter();
   const adapterFlow = createFlow([flowMenu]);
   const adapterProvider = createProvider(BaileysProvider, {
-    name: botName,
+    name: botName
   });
 
   return createBot({
@@ -49,6 +49,27 @@ app.get("/", (req, res) => {
   `;
   res.send(htmlResponse);
 });
+app.get('/events', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+
+  // Inicia el intervalo
+  const interval = setInterval(() => {
+    const qrFileName = req.query.qrfile;
+    const imagePath = path.join(__dirname, qrFileName);
+    const fileExists = qrFileName === '' ? true : fs.existsSync(imagePath);
+
+    // Enviar el estado del archivo
+    res.write(`data: ${JSON.stringify({ fileExists: fileExists })}\n\n`);
+
+    // Si el archivo no existe, detiene el intervalo
+    if (!fileExists) {
+      clearInterval(interval);
+    }
+  }, 5000);
+});
+
 
 app.get("/endBot", (req, res) => {
   const htmlResponse = `

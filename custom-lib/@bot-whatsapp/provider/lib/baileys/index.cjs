@@ -316,12 +316,13 @@ const logger = new Console({
  * https://github.com/whiskeysockets/Baileys
  */
 class BaileysProvider extends ProviderClass {
-    globalVendorArgs = { name: `bot`, gifPlayback: false, usePairingCode: false, phoneNumber: null }
+    globalVendorArgs = { name: `bot`, gifPlayback: false, usePairingCode: false, phoneNumber: null, qrCounter: 0 }
     vendor
     store
     saveCredsGlobal = null
     constructor(args) {
         super();
+        this.intervalId = null;
         this.store = null;
         this.globalVendorArgs = { ...this.globalVendorArgs, ...args };
         this.initBailey().then();
@@ -339,12 +340,14 @@ class BaileysProvider extends ProviderClass {
 
         this.store = makeInMemoryStore({ loggerBaileys });
         this.store.readFromFile(`${NAME_DIR_SESSION}/baileys_store.json`);
-        setInterval(() => {
+        this.stopInterval();
+        this.intervalId = setInterval(() => {
             const path = `${NAME_DIR_SESSION}/baileys_store.json`;
             if (existsSync(NAME_DIR_SESSION)) {
                 this.store.writeToFile(path);
             }
         }, 10_000);
+
 
         try {
             const sock = makeWASocket({
@@ -392,10 +395,13 @@ class BaileysProvider extends ProviderClass {
                 /** Conexion cerrada por diferentes motivos */
                 if (connection === 'close') {
                     if (statusCode !== DisconnectReason.loggedOut) {
-                        this.initBailey();
+                        if (this.globalVendorArgs.qrCounter !== 2) {
+                            this.initBailey();
+                        }
                     }
 
                     if (statusCode === DisconnectReason.loggedOut) {
+                        this.stopInterval();
                         const PATH_BASE = join(process.cwd(), NAME_DIR_SESSION);
                         rimraf(PATH_BASE, (err) => {
                             if (err) return
@@ -428,15 +434,36 @@ class BaileysProvider extends ProviderClass {
                 }
 
                 /** QR Code */
-                if (qr && !this.globalVendorArgs.usePairingCode) {
-                    this.emit('require_action', {
-                        instructions: [
-                            `Debes escanear el QR Code 👌 ${this.globalVendorArgs.name}.qr.png`,
-                            `Recuerda que el QR se actualiza cada minuto `,
-                            `Necesitas ayuda: https://link.codigoencasa.com/DISCORD`,
-                        ],
-                    });
-                    await baileyGenerateImage(qr, `${this.globalVendorArgs.name}.qr.png`);
+                if (qr && !this.globalVendorArgs.usePairingCode && this.globalVendorArgs.qrCounter !== 2) {
+                    this.globalVendorArgs.qrCounter++;
+                    if (this.globalVendorArgs.qrCounter === 4) {
+                        const PATH_BASE = join(process.cwd(), NAME_DIR_SESSION);
+                        rimraf(PATH_BASE, (err) => {
+                            if (err) return
+                        });
+                        // Eliminar el archivo QR
+                        const qrFilePath = path.join(process.cwd(), `${this.globalVendorArgs.name}.qr.png`);
+                        fs.unlink(qrFilePath, (err) => {
+                            if (err) {
+                                console.error('Error al eliminar el archivo QR:', err);
+                                return;
+                            }
+                            console.log('Archivo QR eliminado:', qrFilePath);
+                        });
+                        this.stopInterval()
+                    } else {
+
+                        console.log(`[QR Generado #${this.globalVendorArgs.qrCounter}] ${new Date().toISOString()}`);
+                        this.emit('require_action', {
+                            instructions: [
+                                `Debes escanear el QR Code 👌 ${this.globalVendorArgs.name}.qr.png`,
+                                `Recuerda que el QR se actualiza cada minuto `,
+                                `Necesitas ayuda: https://link.codigoencasa.com/DISCORD`,
+                            ],
+                        });
+                        await baileyGenerateImage(qr, `${this.globalVendorArgs.name}.qr.png`);
+                    }
+
                 }
             });
 
@@ -452,6 +479,14 @@ class BaileysProvider extends ProviderClass {
                 `Necesitas ayuda: https://link.codigoencasa.com/DISCORD`,
                 `(Puedes abrir un ISSUE) https://github.com/codigoencasa/bot-whatsapp/issues/new/choose`,
             ]);
+        }
+
+    }
+    stopInterval() {
+        if (this.intervalId) {
+            clearInterval(this.intervalId);
+            console.log("Intervalo detenido.");
+            this.intervalId = null;
         }
     }
 
@@ -844,3 +879,4 @@ class BaileysProvider extends ProviderClass {
 var baileys = BaileysProvider;
 
 module.exports = baileys;
+

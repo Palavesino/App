@@ -6,13 +6,15 @@ const { createBot, createProvider, createFlow, EVENTS, addKeyword } = require('@
 const BaileysProvider = require('@bot-whatsapp/provider/baileys');
 const MockAdapter = require('@bot-whatsapp/database/mock');
 
+
 const port = process.env.PORT || 3000;
 const app = express();
 app.use(cors());
 app.use(express.json());
-let contador = 1
+let contador = 1;
+
 //-------------------------------------------------
-let botQr = ''
+let botQr = '';
 const flowMenu = addKeyword(EVENTS.WELCOME)
   .addAnswer('ᴡ ᴇ ʟ ᴄ ᴏ ᴍ ᴇ  𝓣𝓸  𝓒𝓱𝓪𝓽𝓑𝓸𝓽 The New WORLD');
 
@@ -24,7 +26,7 @@ const main = async () => {
   const adapterDB = new MockAdapter();
   const adapterFlow = createFlow([flowMenu]);
   const adapterProvider = createProvider(BaileysProvider, {
-    name: botName
+    name: botName,
   });
 
   return createBot({
@@ -32,9 +34,17 @@ const main = async () => {
     provider: adapterProvider,
     database: adapterDB,
   });
-
 };
 
+// Monitoreo del uso de memoria
+setInterval(() => {
+  const memoryUsage = process.memoryUsage();
+  console.log("Uso de memoria:");
+  console.log(`  RSS: ${(memoryUsage.rss / 1024 / 1024).toFixed(2)} MB`);
+  console.log(`  Heap Total: ${(memoryUsage.heapTotal / 1024 / 1024).toFixed(2)} MB`);
+  console.log(`  Heap Used: ${(memoryUsage.heapUsed / 1024 / 1024).toFixed(2)} MB`);
+  console.log(`  External: ${(memoryUsage.external / 1024 / 1024).toFixed(2)} MB`);
+}, 10000); // Cada 10 segundos
 
 app.get("/", (req, res) => {
   const htmlResponse = `

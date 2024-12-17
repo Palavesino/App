@@ -5,26 +5,150 @@ const cors = require('cors');
 const { createBot, createProvider, createFlow, EVENTS, addKeyword } = require('@bot-whatsapp/bot');
 const BaileysProvider = require('@bot-whatsapp/provider/baileys');
 const MockAdapter = require('@bot-whatsapp/database/mock');
-
+const optionMesage = require('./enum/optionEnum');
+const typeMesage = require('./enum/TypeMessage');
 
 const port = process.env.PORT || 3000;
+const clave = process.env.SECRET_KEY || ''
 const app = express();
 app.use(cors());
 app.use(express.json());
-let contador = 1;
-
+let contadorBot = 1;
+let listMessages = []
 //-------------------------------------------------
 let botQr = '';
-const flowMenu = addKeyword(EVENTS.WELCOME)
-  .addAnswer('ᴡ ᴇ ʟ ᴄ ᴏ ᴍ ᴇ  𝓣𝓸  𝓒𝓱𝓪𝓽𝓑𝓸𝓽 The New WORLD');
+// Variables globales para manejar datos de flujo y control de navegación
+let messageList = [];
+let contador = 0;
+let flowCounter = 0;
 
+
+// Define un flujo de finalización que restablece contadores y datos de flujo
+const flujoFin = addKeyword(EVENTS.ACTION)
+  .addAction(async (_, { endFlow, state }) => {
+    // Reinicia contadores y lista de mensajes
+    contador = 0;
+    flowCounter = 0;
+    messageList = [];
+    await state.update({ showMessage: false });
+    return await endFlow();
+  });
+
+// Define un subflujo que maneja mensajes y navegación entre flujos
+const subFlujos = addKeyword(EVENTS.ACTION)
+  .addAction(async (_, { flowDynamic, state, gotoFlow }) => {
+    // Obtiene el mensaje actual del estado
+    let message = state.get('message');
+    if (message !== null) {
+      // Personaliza el mensaje si contiene una referencia al nombre del usuario
+      let body = message.typeMessage === typeMesage.SHOWNAME
+        ?
+        message.body.replace(/\b(name|nombre)\b/gi, state.get('name'))
+
+        : message.body;
+      await flowDynamic(body);
+      if (message.option !== optionMesage.READ) {
+        // Configura si se debe mostrar el mensaje adicional de navegación
+        const showMessage = message.option !== optionMesage.CAPTURE
+          ? state.get('showMessage')
+          : false;
+        const subFlowsMessage = showMessage
+          ? (contador === 0 ? `0) Volver al Menú` : `0) Volver al Anterior`)
+          : null;
+
+        if (subFlowsMessage) {
+          await flowDynamic(subFlowsMessage);
+        }
+
+        return;
+      }
+    }
+    // Verifica si es el último flujo y redirige al flujo de finalización si es necesario
+    if (flowCounter === (listMessages.length - 1)) {
+      return gotoFlow(flujoFin);
+    } else {
+      flowCounter++;
+    }
+    return await gotoFlow(flowWelcome);
+  })
+  .addAction({ capture: true }, async (ctx, { flowDynamic, fallBack, gotoFlow, state }) => {
+    // Captura la entrada del usuario y actualiza el estado según la respuesta
+    let message = state.get('message');
+    // Salida si el usuario dice "chau" o "adios"
+    if (ctx.body.toString().toLowerCase() === 'chau' || ctx.body.toString().toLowerCase() === 'adios') {
+      await flowDynamic("¡Gracias por comunicarte con @DanielBot!, ¡Que tengas un excelente día! 🌟")
+      return gotoFlow(flujoFin);
+    }
+    // Verifica si el mensaje actual requiere capturar un nombre
+    //typeMessage
+    if (message.typeMessage !== null) {
+      if (message.typeMessage === typeMesage.NAME) {
+        await state.update({
+          name: ctx.body.toString()
+        });
+      } else if (message.typeMessage === typeMesage.NUMBER) {
+        // Verifica si el usuario ingresó un número válido
+        if (isNaN(ctx.body.trim())) {
+          return await fallBack('Por favor, selecciona una opción válida.');
+        }
+      }
+    }
+    // Captura la selección del usuario y navega al subflujo correspondiente
+    if (
+      message.option !== optionMesage.MENU ||
+      (!message.childMessages || message.childMessages.length === 0) && parseInt(ctx.body.trim()) !== 0
+    ) {
+      // Resetea la navegación si la opción no tiene submensajes
+      await state.update({ message: null, showMessage: false });
+      messageList = [];
+      contador = 0;
+      return await gotoFlow(subFlujos);
+    }
+    // Verifica el índice de selección del usuario y navega al subflujo correspondiente
+    const index = parseInt(ctx.body.trim()) - 1;
+    if (!isNaN(index) && index >= 0 && index < message.childMessages.length) {
+      messageList[contador] = message;
+      contador++;
+      await state.update({
+        message: message.childMessages[index],
+        showMessage: true
+      });
+      await gotoFlow(subFlujos);
+    } else if (index === -1 && contador !== 0) {
+      // Navega al mensaje anterior si es la opción seleccionada
+      const previousMessage = messageList[(contador - 1)];
+      await state.update({ message: previousMessage })
+      contador--;
+      if (contador === 0) {
+        await state.update({ showMessage: false })
+      }
+      await gotoFlow(subFlujos);
+    } else {
+      // Si la selección no es válida, muestra un mensaje de error
+      return await fallBack('Por favor, selecciona una opción válida.');
+    }
+
+  });
+;
+
+// Define el flujo de bienvenida que inicia el proceso de flujos
+const flowWelcome = addKeyword(EVENTS.WELCOME)
+  .addAction(async (_, { gotoFlow, state }) => {
+    // Actualiza el estado con el primer mensaje del flujo actual
+    await state.update({
+      message: listMessages.length !== 0
+        ? listMessages[flowCounter]
+        : null
+    });
+    return await gotoFlow(subFlujos);
+  });
+// ----------------------------------------------------------------
 const main = async () => {
-  const botName = `bot-${contador}`;
-  botQr = `bot-${contador}.qr.png`;
-  contador++;
-
+  const botName = `bot-${contadorBot}`;
+  botQr = `bot-${contadorBot}.qr.png`;
+  contadorBot++;
   const adapterDB = new MockAdapter();
-  const adapterFlow = createFlow([flowMenu]);
+  const adapterFlow = createFlow([subFlujos, flowWelcome, flujoFin]);
   const adapterProvider = createProvider(BaileysProvider, {
     name: botName,
   });
@@ -50,25 +174,31 @@ app.get("/", (req, res) => {
   const htmlResponse = `
     <html>
       <head>
-        <title>NodeJs y Express en Vercel</title>
+        <title>NodeJs y Express en RENDER</title>
       </head>
       <body>
-        <h1>Soy un proyecto Back end en vercel</h1>
+        <h1>Soy un proyecto Back end en RENDER</h1>
       </body>
     </html>
   `;
   res.send(htmlResponse);
 });
 app.get('/events', (req, res) => {
+  const { key, qrfile } = req.query; // Extraemos la clave y el nombre del archivo de los parámetros
+
+  // Validar la clave
+  if (key !== clave) {
+    return res.status(401).json({ error: 'Clave inválida o no proporcionada.' });
+  }
+
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
 
   // Inicia el intervalo
   const interval = setInterval(() => {
-    const qrFileName = req.query.qrfile;
-    const imagePath = path.join(__dirname, qrFileName);
-    const fileExists = qrFileName === '' ? true : fs.existsSync(imagePath);
+    const imagePath = path.join(__dirname, qrfile);
+    const fileExists = qrfile === '' ? true : fs.existsSync(imagePath);
 
     // Enviar el estado del archivo
     res.write(`data: ${JSON.stringify({ fileExists: fileExists })}\n\n`);
@@ -80,47 +210,24 @@ app.get('/events', (req, res) => {
   }, 5000);
 });
 
-
-app.get("/endBot", (req, res) => {
-  const htmlResponse = `
-    <html>
-      <head>
-        <title>CHATBOT END</title>
-      </head>
-      <body>
-        <h1>CHATBOT END</h1>
-      </body>
-    </html>
-  `;
-  bot = null;
-
-  res.send(htmlResponse);
-});
-app.get("/test", (req, res) => {
-  const htmlResponse = `
-    <html>
-      <head>
-        <title>TEST PATH</title>
-      </head>
-      <body>
-        <h1>DALE BOT DALE</h1>
-      </body>
-    </html>
-  `;
-  res.send(htmlResponse);
-});
-
-app.get('/start-bot', async (req, res) => {
+app.post('/start-bot', async (req, res) => {
   try {
-    // // Ruta al archivo .png en el directorio raíz
-    // const filePath = path.join(__dirname, 'bot.qr.png');
-    // // Verificar si el archivo existe
-    // if (fs.existsSync(filePath)) {
-    //   // Eliminar el archivo si existe
-    //   fs.unlinkSync(filePath);
-    //   console.log('Archivo image.png eliminado.');
-    // }
-    console.log("start bot");
+    const { key, messages } = req.body;
+
+    // Verificar si la clave es válida
+    if (!key || key !== clave) {
+      return res.status(401).json({ error: 'Clave inválida o ausente.' });
+    }
+
+    // Verificar que messages sea un array
+    if (!Array.isArray(messages)) {
+      return res.status(400).json({ error: 'El campo "messages" debe ser una lista.' });
+    }
+
+    // Asignar los mensajes a la lista
+    listMessages = messages;
+
+    console.log("Start bot con mensajes:", listMessages);
     await main();
 
     res.status(200).json({
@@ -128,6 +235,7 @@ app.get('/start-bot', async (req, res) => {
       botQrName: botQr
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: 'Ocurrió un error al iniciar el bot.' });
   }
 });
@@ -144,24 +252,18 @@ const convertToBase64 = (filePath) => {
 };
 
 
-// app.get('/get-qr', async (req, res) => {
-//   try {
-//     console.log("Generando qr");
-//     const imagePath = path.join(process.cwd(), 'bot.qr.png');
-//     const image = fs.createReadStream(imagePath);
-//     res.setHeader('Content-Type', 'image/png');
-//     res.setHeader('Content-Disposition', 'attachment; filename="bot.qr.png"');
-//     image.pipe(res);
-//   } catch (error) {
-//     res.status(500).json({ error: 'Ocurrió un error al iniciar el bot.' });
-//   }
-// });
+
 
 app.get('/get-qr/:qrName', async (req, res) => {
   try {
+    // Recuperar la clave desde la cabecera
+    const apiKey = req.headers['x-api-key'];
+    if (!apiKey || apiKey !== clave) {
+      return res.status(401).json({ error: 'Clave inválida o ausente.' });
+    }
+
     // Recupera el nombre del QR desde los parámetros de la URL
     const qrName = req.params.qrName;
-
     if (!qrName) {
       return res.status(400).json({ error: 'El nombre del QR es requerido.' });
     }

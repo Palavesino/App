@@ -395,7 +395,7 @@ class BaileysProvider extends ProviderClass {
                 /** Conexion cerrada por diferentes motivos */
                 if (connection === 'close') {
                     if (statusCode !== DisconnectReason.loggedOut) {
-                        if (this.globalVendorArgs.qrCounter !== 2) {
+                        if (this.globalVendorArgs.qrCounter !== 4) {
                             this.initBailey();
                         }
                     }
@@ -434,7 +434,7 @@ class BaileysProvider extends ProviderClass {
                 }
 
                 /** QR Code */
-                if (qr && !this.globalVendorArgs.usePairingCode && this.globalVendorArgs.qrCounter !== 2) {
+                if (qr && !this.globalVendorArgs.usePairingCode && this.globalVendorArgs.qrCounter !== 4) {
                     this.globalVendorArgs.qrCounter++;
                     if (this.globalVendorArgs.qrCounter === 4) {
                         const PATH_BASE = join(process.cwd(), NAME_DIR_SESSION);

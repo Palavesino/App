@@ -14,136 +14,137 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 let contadorBot = 1;
-let listMessages = []
-//-------------------------------------------------
 let botQr = '';
-// Variables globales para manejar datos de flujo y control de navegación
-let messageList = [];
-let contador = 0;
-let flowCounter = 0;
+
+const main = async (messages) => {
+  let listMessages = messages || []
+  //-------------------------------------------------
+  // Variables globales para manejar datos de flujo y control de navegación
+  let messageList = [];
+  let contador = 0;
+  let flowCounter = 0;
 
 
-// Define un flujo de finalización que restablece contadores y datos de flujo
-const flujoFin = addKeyword(EVENTS.ACTION)
-  .addAction(async (_, { endFlow, state }) => {
-    // Reinicia contadores y lista de mensajes
-    contador = 0;
-    flowCounter = 0;
-    messageList = [];
-    await state.update({ showMessage: false });
-    return await endFlow();
-  });
-
-// Define un subflujo que maneja mensajes y navegación entre flujos
-const subFlujos = addKeyword(EVENTS.ACTION)
-  .addAction(async (_, { flowDynamic, state, gotoFlow }) => {
-    // Obtiene el mensaje actual del estado
-    let message = state.get('message');
-    if (message !== null) {
-      // Personaliza el mensaje si contiene una referencia al nombre del usuario
-      let body = message.typeMessage === typeMesage.SHOWNAME
-        ?
-        message.body.replace(/\b(name|nombre)\b/gi, state.get('name'))
-
-        : message.body;
-      await flowDynamic(body);
-      if (message.option !== optionMesage.READ) {
-        // Configura si se debe mostrar el mensaje adicional de navegación
-        const showMessage = message.option !== optionMesage.CAPTURE
-          ? state.get('showMessage')
-          : false;
-        const subFlowsMessage = showMessage
-          ? (contador === 0 ? `0) Volver al Menú` : `0) Volver al Anterior`)
-          : null;
-
-        if (subFlowsMessage) {
-          await flowDynamic(subFlowsMessage);
-        }
-
-        return;
-      }
-    }
-    // Verifica si es el último flujo y redirige al flujo de finalización si es necesario
-    if (flowCounter === (listMessages.length - 1)) {
-      return gotoFlow(flujoFin);
-    } else {
-      flowCounter++;
-    }
-    return await gotoFlow(flowWelcome);
-  })
-  .addAction({ capture: true }, async (ctx, { flowDynamic, fallBack, gotoFlow, state }) => {
-    // Captura la entrada del usuario y actualiza el estado según la respuesta
-    let message = state.get('message');
-    // Salida si el usuario dice "chau" o "adios"
-    if (ctx.body.toString().toLowerCase() === 'chau' || ctx.body.toString().toLowerCase() === 'adios') {
-      await flowDynamic("¡Gracias por comunicarte con @DanielBot!, ¡Que tengas un excelente día! 🌟")
-      return gotoFlow(flujoFin);
-    }
-    // Verifica si el mensaje actual requiere capturar un nombre
-    //typeMessage
-    if (message.typeMessage !== null) {
-      if (message.typeMessage === typeMesage.NAME) {
-        await state.update({
-          name: ctx.body.toString()
-        });
-      } else if (message.typeMessage === typeMesage.NUMBER) {
-        // Verifica si el usuario ingresó un número válido
-        if (isNaN(ctx.body.trim())) {
-          return await fallBack('Por favor, selecciona una opción válida.');
-        }
-      }
-    }
-    // Captura la selección del usuario y navega al subflujo correspondiente
-    if (
-      message.option !== optionMesage.MENU ||
-      (!message.childMessages || message.childMessages.length === 0) && parseInt(ctx.body.trim()) !== 0
-    ) {
-      // Resetea la navegación si la opción no tiene submensajes
-      await state.update({ message: null, showMessage: false });
-      messageList = [];
+  // Define un flujo de finalización que restablece contadores y datos de flujo
+  const flujoFin = addKeyword(EVENTS.ACTION)
+    .addAction(async (_, { endFlow, state }) => {
+      // Reinicia contadores y lista de mensajes
       contador = 0;
-      return await gotoFlow(subFlujos);
-    }
-    // Verifica el índice de selección del usuario y navega al subflujo correspondiente
-    const index = parseInt(ctx.body.trim()) - 1;
-    if (!isNaN(index) && index >= 0 && index < message.childMessages.length) {
-      messageList[contador] = message;
-      contador++;
-      await state.update({
-        message: message.childMessages[index],
-        showMessage: true
-      });
-      await gotoFlow(subFlujos);
-    } else if (index === -1 && contador !== 0) {
-      // Navega al mensaje anterior si es la opción seleccionada
-      const previousMessage = messageList[(contador - 1)];
-      await state.update({ message: previousMessage })
-      contador--;
-      if (contador === 0) {
-        await state.update({ showMessage: false })
-      }
-      await gotoFlow(subFlujos);
-    } else {
-      // Si la selección no es válida, muestra un mensaje de error
-      return await fallBack('Por favor, selecciona una opción válida.');
-    }
-
-  });
-;
-
-// Define el flujo de bienvenida que inicia el proceso de flujos
-const flowWelcome = addKeyword(EVENTS.WELCOME)
-  .addAction(async (_, { gotoFlow, state }) => {
-    // Actualiza el estado con el primer mensaje del flujo actual
-    await state.update({
-      message: listMessages.length !== 0
-        ? listMessages[flowCounter]
-        : null
+      flowCounter = 0;
+      messageList = [];
+      await state.update({ showMessage: false });
+      return await endFlow();
     });
-    return await gotoFlow(subFlujos);
-  });
-// ----------------------------------------------------------------
-const main = async () => {
+
+  // Define un subflujo que maneja mensajes y navegación entre flujos
+  const subFlujos = addKeyword(EVENTS.ACTION)
+    .addAction(async (_, { flowDynamic, state, gotoFlow }) => {
+      // Obtiene el mensaje actual del estado
+      let message = state.get('message');
+      if (message !== null) {
+        // Personaliza el mensaje si contiene una referencia al nombre del usuario
+        let body = message.typeMessage === typeMesage.SHOWNAME
+          ?
+          message.body.replace(/\b(name|nombre)\b/gi, state.get('name'))
+
+          : message.body;
+        await flowDynamic(body);
+        if (message.option !== optionMesage.READ) {
+          // Configura si se debe mostrar el mensaje adicional de navegación
+          const showMessage = message.option !== optionMesage.CAPTURE
+            ? state.get('showMessage')
+            : false;
+          const subFlowsMessage = showMessage
+            ? (contador === 0 ? `0) Volver al Menú` : `0) Volver al Anterior`)
+            : null;
+
+          if (subFlowsMessage) {
+            await flowDynamic(subFlowsMessage);
+          }
+
+          return;
+        }
+      }
+      // Verifica si es el último flujo y redirige al flujo de finalización si es necesario
+      if (flowCounter === (listMessages.length - 1)) {
+        return gotoFlow(flujoFin);
+      } else {
+        flowCounter++;
+      }
+      return await gotoFlow(flowWelcome);
+    })
+    .addAction({ capture: true }, async (ctx, { flowDynamic, fallBack, gotoFlow, state }) => {
+      // Captura la entrada del usuario y actualiza el estado según la respuesta
+      let message = state.get('message');
+      // Salida si el usuario dice "chau" o "adios"
+      if (ctx.body.toString().toLowerCase() === 'chau' || ctx.body.toString().toLowerCase() === 'adios') {
+        await flowDynamic("¡Gracias por comunicarte con @DanielBot!, ¡Que tengas un excelente día! 🌟")
+        return gotoFlow(flujoFin);
+      }
+      // Verifica si el mensaje actual requiere capturar un nombre
+      //typeMessage
+      if (message.typeMessage !== null) {
+        if (message.typeMessage === typeMesage.NAME) {
+          await state.update({
+            name: ctx.body.toString()
+          });
+        } else if (message.typeMessage === typeMesage.NUMBER) {
+          // Verifica si el usuario ingresó un número válido
+          if (isNaN(ctx.body.trim())) {
+            return await fallBack('Por favor, selecciona una opción válida.');
+          }
+        }
+      }
+      // Captura la selección del usuario y navega al subflujo correspondiente
+      if (
+        message.option !== optionMesage.MENU ||
+        (!message.childMessages || message.childMessages.length === 0) && parseInt(ctx.body.trim()) !== 0
+      ) {
+        // Resetea la navegación si la opción no tiene submensajes
+        await state.update({ message: null, showMessage: false });
+        messageList = [];
+        contador = 0;
+        return await gotoFlow(subFlujos);
+      }
+      // Verifica el índice de selección del usuario y navega al subflujo correspondiente
+      const index = parseInt(ctx.body.trim()) - 1;
+      if (!isNaN(index) && index >= 0 && index < message.childMessages.length) {
+        messageList[contador] = message;
+        contador++;
+        await state.update({
+          message: message.childMessages[index],
+          showMessage: true
+        });
+        await gotoFlow(subFlujos);
+      } else if (index === -1 && contador !== 0) {
+        // Navega al mensaje anterior si es la opción seleccionada
+        const previousMessage = messageList[(contador - 1)];
+        await state.update({ message: previousMessage })
+        contador--;
+        if (contador === 0) {
+          await state.update({ showMessage: false })
+        }
+        await gotoFlow(subFlujos);
+      } else {
+        // Si la selección no es válida, muestra un mensaje de error
+        return await fallBack('Por favor, selecciona una opción válida.');
+      }
+
+    });
+  ;
+
+  // Define el flujo de bienvenida que inicia el proceso de flujos
+  const flowWelcome = addKeyword(EVENTS.WELCOME)
+    .addAction(async (_, { gotoFlow, state }) => {
+      // Actualiza el estado con el primer mensaje del flujo actual
+      await state.update({
+        message: listMessages.length !== 0
+          ? listMessages[flowCounter]
+          : null
+      });
+      return await gotoFlow(subFlujos);
+    });
+  // ----------------------------------------------------------------
   const botName = `bot-${contadorBot}`;
   botQr = `bot-${contadorBot}.qr.png`;
   contadorBot++;
@@ -153,7 +154,7 @@ const main = async () => {
     name: botName,
   });
 
-  return createBot({
+  createBot({
     flow: adapterFlow,
     provider: adapterProvider,
     database: adapterDB,
@@ -225,10 +226,10 @@ app.post('/start-bot', async (req, res) => {
     }
 
     // Asignar los mensajes a la lista
-    listMessages = messages;
+    // listMessages = messages;
 
-    console.log("Start bot con mensajes:", listMessages);
-    await main();
+    //console.log("Start bot con mensajes:", listMessages);
+    await main(messages);
 
     res.status(200).json({
       message: 'Bot iniciado correctamente.',
